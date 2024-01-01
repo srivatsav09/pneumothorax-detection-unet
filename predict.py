@@ -263,10 +263,10 @@ class PneumothoraxPredictor:
 if __name__ == '__main__':
 
     _, RESIZE_TO, TRAIN_PROP = utils.read_config_file()
-    pp = PneumothoraxPredictor(fpath='/path/to/image/folder/',
-                               csv_path='/path/to/labels/csv/file',
-                               classifier_path='/path/to/trained/classifier/model',
-                               seg_path='/path/to/trained/segmentation/model',
+    pp = PneumothoraxPredictor(fpath='C:/Users/sriva/gaip-project/PNEUMOTHORAX/full_short/',
+                               csv_path='C:/Users/sriva/gaip-project/model/train-rle.csv',
+                               classifier_path='C:/Users/sriva/gaip-model/pneumothorax-detection-unet/train_classifier.py',
+                               seg_path='C:/Users/sriva/gaip-model/pneumothorax-detection-unet/train_seg.py',
                                classifier_threshold=0.5)
     print('Predictor loaded. Use pp.predict() to predict on a random image. Use pp.predict(fname=) to predict a'
           ' specific file.')

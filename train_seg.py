@@ -20,10 +20,10 @@ if __name__ == '__main__':
     # =================== ADJUST THESE PARAMETERS AS REQUIRED ===================
 
     # Set the paths where to save trained model, and where to find training and validation data
-    save_path = '/path/where/model/will/be/saved/'
-    image_path = '/path/to/training/data/'
-    csv_path = '/path/to/labels/csv/file'
-    imgnet_pretrain_path = '/path/to/pretrained/image_net/model/'
+    save_path = 'C:/Users/sriva/gaip-model/pneumothorax-detection-unet/saved_model/'
+    image_path = 'C:/Users/sriva/gaip-project/PNEUMOTHORAX/full_short/'
+    csv_path = 'fin.csv'
+    imgnet_pretrain_path = "C:/Users/sriva/Downloads/vgg16_weights_tf_dim_ordering_tf_kernels.h5"
 
     # Training parameters - read from config.ini file. Beta is the average % of PT pixels across training set only
     BATCH_SIZE, RESIZE_TO, TRAIN_PROP = utils.read_config_file()
