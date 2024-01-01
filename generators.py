@@ -379,20 +379,23 @@ class ClassifierGenerator(Sequence):
 
     def __fname_to_px(self, index):
         # Loads an image in the dicom format, resizes it and converts it into a numpy array
-        filename = self.image_filenames[index]
-        dcm_file = dcmread(self.image_path + filename + '.dcm')
-        dcm_pixel_data = dcm_file.pixel_array
-        pil_data = Image.fromarray(dcm_pixel_data)
+        try:
+            filename = self.image_filenames[index]
+            dcm_file = dcmread(self.image_path + filename + '.dcm')
+            dcm_pixel_data = dcm_file.pixel_array
+            pil_data = Image.fromarray(dcm_pixel_data)
 
-        if dcm_pixel_data.shape[0] != self.resize_to:
-            pil_data = pil_data.resize((self.resize_to, self.resize_to))
+            if dcm_pixel_data.shape[0] != self.resize_to:
+                pil_data = pil_data.resize((self.resize_to, self.resize_to))
 
-        # Note that since DenseNet etc are pretrained on RGB images, they expect 3 channels and therefore we need
-        # to convert the grayscale dicom images to RGB in order to maintain compatibility
-        pil_data = pil_data.convert('RGB')
-        dcm_pixel_data = np.array(pil_data)
-
-        return dcm_pixel_data
+            # Note that since DenseNet etc are pretrained on RGB images, they expect 3 channels and therefore we need
+            # to convert the grayscale dicom images to RGB in order to maintain compatibility
+            pil_data = pil_data.convert('RGB')
+            dcm_pixel_data = np.array(pil_data)
+            return dcm_pixel_data
+        except Exception as e:
+            print(f"Error loading DICOM file {filename}: {e}")
+            return np.zeros((self.resize_to, self.resize_to, 3), dtype=np.uint8)
 
     def __fname_to_label(self, index):
         # Get the ground truth label of an image

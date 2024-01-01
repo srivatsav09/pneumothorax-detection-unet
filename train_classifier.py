@@ -17,13 +17,13 @@ if __name__ == '__main__':
     # =================== ADJUST THESE PARAMETERS AS REQUIRED ===================
 
     # Set the paths where to save trained model, and where to find training and validation data
-    save_path = '/path/where/model/will/be/saved/'
-    image_path = '/path/to/training/data/'
-    csv_path = '/path/to/labels/csv/file'
+    save_path = 'C:/Users/sriva/gaip-model/pneumothorax-detection-unet/saved_model/'
+    image_path = 'C:/Users/sriva/gaip-project/PNEUMOTHORAX/full_short/'
+    csv_path = 'fin.csv'
 
     # Training parameters - read from config.ini file
     BATCH_SIZE, RESIZE_TO, TRAIN_PROP = utils.read_config_file()
-    NUM_EPOCHS = 70
+    NUM_EPOCHS = 5
 
     # Choose mode as 'lrf' or 'train'; 'lrf' will draw graph for choosing learning rate. 'train' will use
     # checkpoint callback, and will save best model to save_path

@@ -161,8 +161,8 @@ def create_classification_model(input_size, bb='DenseNet169'):
         the backbone to use for image classification. Acceptable arguments are DenseNet121, DenseNet169 or DenseNet201
     """
 
-    assert bb in ['DenseNet121', 'DenseNet169', 'DenseNet201'], \
-        f'Backbone {bb} not in list: DenseNet121, DenseNet169, DenseNet201'
+    assert bb in ['DenseNet121', 'DenseNet169', 'DenseNet201','VGG16'], \
+        f'Backbone {bb} not in list: DenseNet121, DenseNet169, DenseNet201,VGG16'
 
     if bb == 'DenseNet201':
         pretrained_model = applications.DenseNet201(include_top=False,
@@ -179,6 +179,11 @@ def create_classification_model(input_size, bb='DenseNet169'):
                                                     weights='imagenet',
                                                     input_shape=(input_size, input_size, 3),
                                                     pooling=None)
+    if bb == 'VGG16':
+        pretrained_model = applications.VGG16(include_top=False,
+                                              weights='imagenet',
+                                              input_shape=(input_size, input_size, 3),
+                                              pooling=None)
 
     # test this - how much on/off is good here ? currently 50% of the model is trainable which is ... a lot
     for l in pretrained_model.layers:
