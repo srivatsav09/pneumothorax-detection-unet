@@ -229,7 +229,36 @@ class PneumothoraxPredictor:
 
         plt.show()
 
-    def predict(self, fname=None):
+    def __apply_tta_augmentations(self, image):
+        """
+        Generate test-time augmentation variants of the input image.
+        Returns a list of augmented images and their corresponding inverse transforms.
+        """
+        augmented_images = []
+        inverse_transforms = []
+
+        # Original image
+        augmented_images.append(image)
+        inverse_transforms.append(lambda x: x)
+
+        # Horizontal flip
+        flipped_h = np.flip(image, axis=2)
+        augmented_images.append(flipped_h)
+        inverse_transforms.append(lambda x: np.flip(x, axis=2))
+
+        # Vertical flip
+        flipped_v = np.flip(image, axis=1)
+        augmented_images.append(flipped_v)
+        inverse_transforms.append(lambda x: np.flip(x, axis=1))
+
+        # Horizontal + Vertical flip
+        flipped_hv = np.flip(np.flip(image, axis=2), axis=1)
+        augmented_images.append(flipped_hv)
+        inverse_transforms.append(lambda x: np.flip(np.flip(x, axis=2), axis=1))
+
+        return augmented_images, inverse_transforms
+
+    def predict(self, fname=None, use_tta=False):
         """
         Carry out classification on the chest X-ray and perform segmentation if pt is predicted. Calls plot method,
         which shows:
@@ -238,14 +267,28 @@ class PneumothoraxPredictor:
 
         Parameters:
         fname: string: filename to predict on. If not given, a random image in the folder will be selected
+        use_tta: bool: whether to use Test-Time Augmentation (TTA) for improved prediction accuracy.
+                       TTA averages predictions across multiple augmented versions of the image.
+                       Recommended: True for better recall, False for faster inference.
         """
         self.__load_dicom(fname)
         start = time.time()
 
         # Run predict (image) to get a predicted class
-        classifier_pred = self.classifier.predict(self.img_rgb)
+        if use_tta:
+            # Apply TTA for classification
+            rgb_augs, _ = self.__apply_tta_augmentations(self.img_rgb)
+            classifier_preds = []
+            for aug_img in rgb_augs:
+                pred = self.classifier.predict(aug_img, verbose=0)
+                classifier_preds.append(pred)
+            classifier_pred = np.mean(classifier_preds)
+            print(f'classifier pred (TTA): {classifier_pred} (averaged from {len(rgb_augs)} augmentations)')
+        else:
+            classifier_pred = self.classifier.predict(self.img_rgb)
+            print('classifier pred:', classifier_pred)
+
         confidence = classifier_pred
-        print('classifier pred:', classifier_pred)
 
         # If prediction < confidence threshold, very likely there is no pneumothorax
         if classifier_pred < self.classifier_threshold:
@@ -254,7 +297,20 @@ class PneumothoraxPredictor:
 
         # Else if prediction > threshold found at prec/recall testing: classify as PT and segment
         else:
-            self.seg_pred = self.seg.predict(self.img_grayscale)
+            if use_tta:
+                # Apply TTA for segmentation
+                gray_augs, inverse_transforms = self.__apply_tta_augmentations(self.img_grayscale)
+                seg_preds = []
+                for aug_img, inverse_fn in zip(gray_augs, inverse_transforms):
+                    pred = self.seg.predict(aug_img, verbose=0)
+                    # Apply inverse transform to bring prediction back to original orientation
+                    pred_original = inverse_fn(pred)
+                    seg_preds.append(pred_original)
+                # Average all predictions
+                self.seg_pred = np.mean(seg_preds, axis=0, keepdims=True)
+                print(f'segmentation pred (TTA): averaged from {len(gray_augs)} augmentations')
+            else:
+                self.seg_pred = self.seg.predict(self.img_grayscale)
 
         print('Time to predict:', time.time() - start, 'seconds.')
         self.__plot(confidence)
