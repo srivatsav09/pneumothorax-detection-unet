@@ -128,3 +128,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Model files (too large for GitHub - use Git LFS or external storage)
+saved_models/
+*.h5
+*.keras
+*.hdf5
+*.pb
+*.ckpt
