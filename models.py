@@ -1,7 +1,8 @@
-from tensorflow.keras import applications
-from tensorflow.keras import layers
-from tensorflow.keras import models
+from keras import applications
+from keras import layers
+from keras import models
 import tensorflow as tf
+import keras.backend as K
 
 
 def attention_gate(x, g, inter_channels, name=None):
@@ -23,7 +24,7 @@ def attention_gate(x, g, inter_channels, name=None):
     psi = layers.Conv2D(1, (1, 1), strides=(1, 1), padding='same', name=f'{name}_psi' if name else None)(act_xg)
     sigmoid_xg = layers.Activation('sigmoid', name=f'{name}_sigmoid' if name else None)(psi)
 
-    upsample_psi = layers.UpSampling2D(size=(2, 2), name=f'{name}_upsample' if name else None)(sigmoid_xg) if tf.keras.backend.int_shape(x)[1] != tf.keras.backend.int_shape(sigmoid_xg)[1] else sigmoid_xg
+    upsample_psi = layers.UpSampling2D(size=(2, 2), name=f'{name}_upsample' if name else None)(sigmoid_xg) if K.int_shape(x)[1] != K.int_shape(sigmoid_xg)[1] else sigmoid_xg
 
     y = layers.Multiply(name=f'{name}_multiply' if name else None)([upsample_psi, x])
 
@@ -183,6 +184,74 @@ def create_segmentation_model(input_size, architecture='unet_plus_plus', l=3, us
     model = models.Model(inputs=model_input, outputs=output_layer)
     model.summary()
 
+    return model
+
+
+def create_multitask_model(input_size, bb='EfficientNetB3'):
+    """
+    Create a multi-task model with:
+    1. Classification head: Binary pneumothorax detection
+    2. Localization head: Bounding box prediction (x_min, y_min, x_max, y_max)
+
+    This improves classification accuracy by learning spatial features
+    and provides interpretable bounding box outputs.
+
+    Parameters:
+    input_size: int:
+        the input size to the model in pixels. Recommended: 512
+    bb: string:
+        the backbone to use. Acceptable: EfficientNetB3 (recommended), DenseNet169
+    """
+    if bb == 'EfficientNetB3':
+        backbone = applications.EfficientNetB3(
+            include_top=False,
+            weights='imagenet',
+            input_shape=(input_size, input_size, 3),
+            pooling=None
+        )
+    elif bb == 'DenseNet169':
+        backbone = applications.DenseNet169(
+            include_top=False,
+            weights='imagenet',
+            input_shape=(input_size, input_size, 3),
+            pooling=None
+        )
+    else:
+        raise ValueError(f"Unsupported backbone: {bb}. Use 'EfficientNetB3' or 'DenseNet169'")
+
+    # Fine-tuning: freeze early layers, unfreeze later layers
+    if bb.startswith('EfficientNet'):
+        total_layers = len(backbone.layers)
+        freeze_until = int(total_layers * 0.75)  # Freeze first 75%
+        for i, layer in enumerate(backbone.layers):
+            layer.trainable = (i >= freeze_until)
+
+    # Shared feature extraction
+    x = layers.GlobalAveragePooling2D()(backbone.output)
+    x = layers.Dropout(0.4)(x)  # Strong dropout for regularization
+    x = layers.Dense(256, activation='relu', kernel_regularizer='l2', name='shared_dense_1')(x)
+    x = layers.BatchNormalization(name='shared_bn')(x)
+    x = layers.Dropout(0.3)(x)
+
+    # Classification head (binary: pneumothorax or not)
+    classification_branch = layers.Dense(128, activation='relu', kernel_regularizer='l2', name='class_dense_1')(x)
+    classification_branch = layers.Dropout(0.2)(classification_branch)
+    classification_output = layers.Dense(1, activation='sigmoid', name='classification')(classification_branch)
+
+    # Localization head (bounding box: [x_min, y_min, x_max, y_max])
+    # Only active when pneumothorax is present, but helps learn spatial features
+    localization_branch = layers.Dense(128, activation='relu', kernel_regularizer='l2', name='bbox_dense_1')(x)
+    localization_branch = layers.Dropout(0.2)(localization_branch)
+    localization_branch = layers.Dense(64, activation='relu', kernel_regularizer='l2', name='bbox_dense_2')(localization_branch)
+    bbox_output = layers.Dense(4, activation='sigmoid', name='bbox')(localization_branch)  # Sigmoid for normalized coords [0, 1]
+
+    model = models.Model(
+        inputs=backbone.input,
+        outputs=[classification_output, bbox_output],
+        name='pneumothorax_multitask_model'
+    )
+
+    model.summary()
     return model
 
 

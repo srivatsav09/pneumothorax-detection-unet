@@ -1,4 +1,4 @@
-import tensorflow.keras.backend as K
+import keras.backend as K
 
 
 def clip(z):
@@ -135,6 +135,9 @@ def focal_tversky_loss(alpha=0.7, gamma=0.75):
     """
 
     def compute_loss(y_true, y_pred):
+        # Cast y_true to float32 to match y_pred dtype
+        y_true = K.cast(y_true, 'float32')
+
         # Flatten the tensors
         y_true_flat = K.flatten(y_true)
         y_pred_flat = K.flatten(y_pred)
@@ -168,6 +171,9 @@ def combined_dice_focal_loss(alpha=0.25, gamma=2.0, dice_weight=2.0, focal_weigh
     """
 
     def compute_loss(y_true, y_pred):
+        # Cast y_true to float32 to match y_pred dtype
+        y_true = K.cast(y_true, 'float32')
+
         # Compute dice loss
         numerator = 2 * K.sum(y_true * y_pred)
         denominator = K.sum(y_true ** 2) + K.sum(y_pred ** 2)

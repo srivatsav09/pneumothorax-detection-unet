@@ -1,97 +1,245 @@
-# Pneumothorax detection with U-Net/U-Net++ in Tensorflow 2.x
-An image classification and segmentation pipeline using U-Net/U-Net++. I've used it to train a pneumothorax detector here on the data from the SIIM-ACR pneumothorax segmentation contest at https://www.kaggle.com/c/siim-acr-pneumothorax-segmentation/
+# Pneumothorax Detection - AI-Powered Chest X-Ray Analysis
 
-Features:
- - Classifier builds on TF2 Keras pretrained models, segmentation model can be chosen as U-Net or U-Net++ 
- - Custom generators for reading dicom files and RLE encoded masks support fully customizable image and mask augmentation 
- - Customizable U-Net++ depth, from 1 up to 4 levels of encoding + decoding  
- - Performance finder class for finding and plotting precision-recall curves of classifier model, as well as mean dice calculator to evaluate overall performance of model as per SIIM-ACR contest
- - Prediction class for plotting side-by-side model predictions and radiologist ground truths 
- 
-L=3 depth U-Net++ model pretrained on ImageNet available at: https://drive.google.com/drive/folders/1Xrf77veOoGOegThvm7a-za0WgO1j7Su8
+An intelligent pneumothorax detection system using EfficientNet-B3 with GradCAM explainability.
 
-## Demo 
-[![Demo of model](https://github.com/albertsokol/pneumothorax-detection-unet/blob/master/readme%20images/yout.png)](https://www.youtube.com/watch?v=DwWl1vok5wY "My UNet++ implementation : pneumothorax classification & segmentation")
+## Quick Start
 
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
-## Training
-There are 3 different training files: 
- - pretrain_unet.py
- - train_classifier.py
- - train_seg.py
+# Run the application
+streamlit run app_improved.py
+```
 
+The app will be available at `http://localhost:8501`
 
-### pretrain_unet.py (optional)
-Use this to pretrain a **segmentation** model on ImageNet/other data before training. Can give a modest boost in dice score. For classifier models, TF already offers pretrained image classifiers. 
+## What This Does
 
+Upload a chest X-ray (DICOM, PNG, or JPG) and get:
+- **Binary Classification**: Pneumothorax detected or not
+- **Confidence Score**: Probability of pneumothorax presence
+- **GradCAM Visualization**: See where the AI is looking
+- **Lung-Focused Attention**: Masks attention to lung regions only
 
-### train_classifier.py
-Train the classifier model. 
- - **Required input format**: X-ray images should be in **.dicom** format, of any dimensions.
- - **Required label format**: **.csv** file with two headers: **'ImageId'** and **'Class'**. ImageId should be the name of the image without the .dcm extension. Class should be 0 for negative samples, and 1 for positive samples. See train_classifier_example.csv for an example. 
+## Features
 
-Set training parameters:
- - Edit the config.ini file to set `batch_size`, `resize_to`, and `train_prop`
- - `resize_to` = length and width that the image will be resized to; this is therefore also the input size to the model
- - `train_prop` = %age of the data in image folder to use for training; remainder will be used for validation 
- - `mode` can be **'lrf'** or **'train'**. See below for more info on learning rate finder. Using **'train'** mode will automatically save the best model to save_path
+- ✅ **EfficientNet-B3** classifier with ImageNet pretraining
+- ✅ **GradCAM explainability** with lung-focused masking
+- ✅ **Test-Time Augmentation** for improved accuracy
+- ✅ **Border artifact removal** to mitigate edge bias
+- ✅ **Professional Streamlit interface**
+- ✅ Supports DICOM, PNG, JPG formats
 
-Further options:
- - you can adjust the augmentation parameters by passing in different values for the arguments in the ClassifierGenerator constructor
- - you can choose a different backbone by adjusting the **'bb'** parameter of the create_classification_model function: `'DenseNet121', 'DenseNet169', 'DenseNet201'` are supported already but more can easily be added in the models.py file
+## Model Versions
 
-### train_seg.py
-Train the segmentation model. Both U-Net and U-Net++ are available. 
- - **Required input format**: X-ray images should be in **.dicom** format, of any dimensions.
- - **Required label format**: **.csv** file with two headers: **'ImageId'** and **'EncodedPixels'**. ImageId should be the name of the image without the .dcm extension. EncodedPixels should be the RLE-format encoded ground truth segmentation map. If there is no pneumothorax in the image, ie a negative sample, the value for EncodedPixels should be -1. See train_seg_example.csv for an example. 
- 
- Set training parameters:
-  - mostly the same as for train_classifier
-  - note `beta_pixel_weighting`: this is the average percentage of label = 1 pixels in an image in the training set, used for the weighted pixel binary cross-entropy loss function. 
-  
-  Further options:
-   - choice of loss: dice loss (1 - dice coefficient), weighted pixel BCE loss, and combined loss (default is 2x dice loss + 1x weighted pixel loss).
-   - same augmentation options as classifier - augments images and segmentation maps together. 
-   - can change depth of U-Net++ in create_segmentation_model function. Eg., `l=3` will create a U-Net++ model with 3 downsampling and 3 upsampling steps. Plain U-Net can be constructed using `architecture='unet'`. 
+### V2 Classifier (Currently Active)
+- **Path**: `saved_models/classifier_efficientnet_v2/`
+- **Architecture**: EfficientNet-B3
+- **Accuracy**: ~79%
+- **Input**: 512x512 RGB images
+- **Known Issue**: Has edge artifact bias (see warning below)
 
-### learning rate finder
-The learning rate finder can be activated by setting `mode='lrf'`. 
+### V3 Multitask (Recommended, Not Yet Integrated)
+- **Path**: `saved_models/multitask_clean/`
+- **Architecture**: EfficientNet-B3 + Bounding Box Head
+- **Target Accuracy**: 85%+
+- **Advantages**:
+  - No edge artifact bias
+  - Provides localization
+  - Better preprocessing
 
-This mode cycles through all feasible learning rates, and plots the loss against the learning rate. Using this, you can find the optimal learning rate for your configuration. 
+## ⚠️ Important: V2 Model Limitations
 
-Use at least 1000 training steps for best results. 
+The current V2 model has a **known bias** toward image edge artifacts (DICOM text labels). The model learned to make decisions based on text like "PORTABLE", "AP" at image borders instead of actual lung pathology.
 
-![Image of LRF plot](https://github.com/albertsokol/pneumothorax-detection-unet/blob/master/readme%20images/lrf_labelled.png)
+**Mitigations Applied:**
+- Border removal preprocessing (removes outer 5% of image)
+- Improved lung segmentation for GradCAM
+- Adjustable classification threshold
 
-## Prediction 
-This file will run the prediction pipeline.
+**For better accuracy**, consider upgrading to the V3 multitask model in `saved_models/multitask_clean/`.
 
-Images are fed to the classification model. If the output is higher than `classifier_threshold`, they are also fed to the segmentation model. Note that as the classifier model uses RGB and the segmentation model uses Grayscale, the image is converted during the process. The prediction file uses the `train_prop` value to select only validation set images for displaying predictions. If you had a test set, you could re-configure this. 
+## Configuration
 
-The predict function then plots ground truth and predicted images side by side.
+### Detection Settings (in sidebar)
 
-On the left is the ground truth label, and if there is a ground truth segmentation map, it is displayed in red on the image.
+**Classification Threshold:**
+- `0.2-0.3`: High sensitivity (catch all cases, more false positives)
+- `0.4-0.6`: Balanced (default: 0.5)
+- `0.7-0.9`: High specificity (fewer false positives, may miss subtle cases)
 
-On the right is the predicted label, the confidence in the prediction `(classifier output * 100)` and the predicted segmentation map if appropriate. Brighter areas represent higher confidence by the segmentation model. 
+**Test-Time Augmentation (TTA):**
+- Disabled: Fast (~200-500ms per image)
+- Enabled: Slower (~1-2s), but +5-10% accuracy improvement
+- Averages predictions across 4 augmentations
 
-![Image of prediction plot](https://github.com/albertsokol/pneumothorax-detection-unet/blob/master/readme%20images/predict.png)
+**Lung-Focused GradCAM:**
+- Enabled (recommended): Shows attention only within lung regions
+- Disabled: Shows full image attention
 
-## performance.py 
-This file can be used to plot precision-recall curves or find the mean dice score of the prediction pipeline. 
+## Technical Details
 
-### Plotting precision-recall
-The output of the classifier model is a float between 0 and 1. The classifier threshold can be changed to affect the precision and recall of the model.
+### Preprocessing Pipeline
 
-For example, if set to 0.8, only X-rays which generate an output of >0.8 will be passed to the segmentation model.
+```python
+1. Load DICOM/image → PIL Image (no normalization)
+2. Remove outer 5% border (eliminates DICOM labels)
+3. Resize to 512x512
+4. Convert grayscale to RGB (3 channels)
+5. Normalize to 0-1 (divide by 255)
+```
 
-### Mean dice score
-This follows the Kaggle contest linked above, and calculates the mean dice score of the classifier and segmentation pipeline at a single classifier threshold. 
+### Model Architecture
 
-You can try testing the mean dice score at many different classifier thresholds to choose the one with best performance.
+```
+Input (512x512x3 RGB)
+    ↓
+EfficientNet-B3 (pretrained ImageNet)
+    ↓
+GlobalAveragePooling
+    ↓
+Dropout(0.3)
+    ↓
+Dense(44, relu) + Dropout(0.2)
+    ↓
+Dense(1, sigmoid)
+    ↓
+Output: Probability (0-1)
+```
 
-## References 
-U-Net https://arxiv.org/pdf/1505.04597.pdf
+### GradCAM Implementation
 
-U-Net++ https://arxiv.org/pdf/1912.05074.pdf
+1. Extract last convolutional layer activations
+2. Compute gradients of prediction w.r.t. activations
+3. Weight activations by gradients
+4. Generate heatmap
+5. Optionally mask to lung regions only
+6. Overlay on original image
 
+## File Structure
 
+```
+pneumothorax-detection-unet/
+├── app_improved.py              # Main Streamlit application
+├── models.py                     # Model architecture definitions
+├── generators.py                 # Data generators
+├── losses.py                     # Loss functions
+├── multitask_generator.py        # Multitask data loading
+├── multitask_losses.py           # Multitask loss functions
+├── preprocessing.py              # V3 preprocessing utilities
+├── requirements.txt              # Python dependencies
+├── README.md                     # This file
+└── saved_models/                 # Trained models
+    ├── classifier_efficientnet_v2/       (current)
+    ├── classifier_efficientnet_improved/
+    ├── multitask_clean/                  (recommended)
+    └── multitask_v3/
+```
+
+## Requirements
+
+- Python 3.8+
+- TensorFlow 2.15.1
+- Streamlit 1.25+
+- OpenCV
+- PyDICOM
+- See `requirements.txt` for full list
+
+## Usage Examples
+
+### Basic Usage
+
+1. Launch the app: `streamlit run app_improved.py`
+2. Upload a chest X-ray image
+3. Adjust settings in sidebar (optional)
+4. Click "Analyze X-Ray"
+5. View results and GradCAM visualization
+
+### Adjusting Sensitivity
+
+For **screening** (catch all cases):
+- Set threshold to 0.3
+- Enable TTA
+- Accept more false positives
+
+For **confirmation** (reduce false alarms):
+- Set threshold to 0.7
+- May miss subtle cases
+- Fewer false positives
+
+## Known Issues & Solutions
+
+### Issue: Incorrect predictions on training images
+**Cause**: V2 model edge artifact bias
+**Solution**: Border removal is active, but model is fundamentally limited. Use V3 for better accuracy.
+
+### Issue: GradCAM shows attention on edges/tubes
+**Cause**: Model learned to focus on non-pathological features
+**Solution**: Enable "Lung-Focused GradCAM" to mask attention to lung regions only.
+
+### Issue: Slow first load
+**Cause**: Loading 127MB model file
+**Solution**: Normal (~17 seconds). Subsequent loads are instant due to caching.
+
+## Performance Tips
+
+1. **First run**: Takes ~17 seconds to load model, then instant
+2. **Disable TTA**: For faster inference (200-500ms vs 1-2s)
+3. **Enable caching**: Streamlit automatically caches loaded model
+4. **Batch processing**: Not currently supported, process one at a time
+
+## Development
+
+### Model Components
+
+- **models.py**: Contains `create_classification_model()` for building EfficientNet classifier
+- **generators.py**: `ClassifierGenerator` for loading DICOM images during training
+- **losses.py**: Custom loss functions (dice, focal, combined)
+- **preprocessing.py**: V3 preprocessing functions (border removal, lung windowing)
+
+### Key Functions
+
+```python
+# Load model
+from tensorflow import keras
+model = keras.models.load_model('saved_models/classifier_efficientnet_v2/')
+
+# Preprocess image
+from preprocessing import remove_text_annotations
+image = remove_text_annotations(pil_image, border_crop_percent=0.05)
+
+# Generate GradCAM
+heatmap = generate_gradcam(model, preprocessed_image, use_lung_mask=True)
+```
+
+## Changelog
+
+### Latest (December 2024)
+- ✅ Added border removal preprocessing to mitigate V2 edge bias
+- ✅ Improved lung segmentation for GradCAM (CLAHE + connected components)
+- ✅ Fixed Keras compatibility (using SavedModel format)
+- ✅ Removed excessive emojis from UI
+- ✅ Fixed interpretation guide visibility
+- ✅ Cleaned up project (removed training code, notebooks, temp files)
+
+## References
+
+- **EfficientNet**: [Tan & Le, 2019](https://arxiv.org/abs/1905.11946)
+- **GradCAM**: [Selvaraju et al., 2017](https://arxiv.org/abs/1610.02391)
+- **Dataset**: [SIIM-ACR Pneumothorax Segmentation](https://www.kaggle.com/c/siim-acr-pneumothorax-segmentation/)
+
+## License
+
+See original repository license.
+
+## Support
+
+For issues or questions about:
+- **Model performance**: Review the V2 model warning above
+- **Technical errors**: Check console output for error messages
+- **Feature requests**: Consider the V3 multitask model
+
+---
+
+**Note**: This is an AI-assisted diagnostic tool. Always consult qualified medical professionals for actual clinical decisions.

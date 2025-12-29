@@ -2,7 +2,7 @@ import imgaug.augmenters as iaa
 import numpy as np
 from PIL import Image
 from pydicom import dcmread
-from tensorflow.keras.utils import Sequence
+from keras.utils import Sequence
 
 
 class SegGenerator(Sequence):
