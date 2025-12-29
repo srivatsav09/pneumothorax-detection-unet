@@ -130,7 +130,7 @@ dmypy.json
 .pyre/
 
 # Model files (too large for GitHub - use Git LFS or external storage)
-saved_models/
+saved_models/classifier_efficientnet_improved/
 *.h5
 *.keras
 *.hdf5
