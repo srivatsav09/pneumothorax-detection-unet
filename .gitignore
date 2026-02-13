@@ -128,3 +128,18 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Model files
+saved_models/
+*.h5
+*.keras
+*.hdf5
+*.pb
+*.ckpt
+*.pth
+*.pt
+*.onnx
+
+# Training outputs and data
+outputs/
+data/
