@@ -46,8 +46,15 @@ class PneumothoraxDataset(Dataset):
         self.rle_format = rle_format
         self.apply_windowing = apply_windowing
 
-        # Get unique image IDs
-        self.image_ids = self.df["ImageId"].unique().tolist()
+        # Get unique image IDs, filtered to only those with files on disk
+        all_ids = self.df["ImageId"].unique().tolist()
+        self.image_ids = [
+            img_id for img_id in all_ids
+            if os.path.exists(os.path.join(image_dir, f"{img_id}.dcm"))
+            or os.path.exists(os.path.join(image_dir, f"{img_id}.png"))
+        ]
+        if len(self.image_ids) < len(all_ids):
+            print(f"Dataset: {len(self.image_ids)}/{len(all_ids)} images found on disk")
 
         # Build lookup: image_id -> list of RLE strings
         # (some images have multiple RLE entries for separate pneumothorax regions)
