@@ -44,7 +44,7 @@ Chest X-Ray (DICOM/PNG) -> Preprocessing -> UNet (EfficientNet-B4 encoder, Image
 
 ```bash
 # Clone and setup
-git clone https://github.com/YOUR_USERNAME/pneumothorax-detection-unet.git
+git clone https://github.com/srivatsav09/pneumothorax-detection-unet.git
 cd pneumothorax-detection-unet
 git checkout pytorch-segmentation
 
@@ -72,23 +72,35 @@ python app.py
 
 ## Dataset
 
-Uses ~2500 balanced images from the [SIIM-ACR Pneumothorax Segmentation](https://www.kaggle.com/c/siim-acr-pneumothorax-segmentation/) challenge:
+Uses ~4000 images from the [SIIM-ACR Pneumothorax Segmentation](https://www.kaggle.com/c/siim-acr-pneumothorax-segmentation/) challenge:
 
 - **Format:** DICOM chest X-rays with RLE-encoded segmentation masks
 - **Original size:** 1024x1024, resized to 512x512 for training
 - **Split:** 80/20 stratified train/val (preserving positive/negative ratio)
-- **Class balance:** ~50% positive (pneumothorax present), ~50% negative
+- **Class balance:** ~22% positive (pneumothorax present), ~78% negative
+- **Training:** 50 epochs on T4 GPU with mixed precision
 
-## Metrics
+## Results
 
-| Metric | Description |
-|--------|-------------|
-| **Dice Coefficient** | Primary metric - overlap between predicted and ground truth masks |
-| **IoU (Jaccard)** | Intersection over union |
-| **Pixel Precision** | TP / (TP + FP) at pixel level |
-| **Pixel Recall** | TP / (TP + FN) at pixel level |
-| **Detection Accuracy** | Per-image: correctly identifies if pneumothorax is present |
-| **Detection F1** | Per-image detection precision/recall harmonic mean |
+### Overall Metrics
+
+| Metric | Value |
+|--------|-------|
+| **Dice Coefficient** | 0.7084 +/- 0.3561 |
+| **IoU (Jaccard)** | 0.6504 +/- 0.3765 |
+| **Pixel Precision** | 0.6253 |
+| **Pixel Recall** | 0.4812 |
+| **Pixel F1** | 0.5439 |
+| **Detection Accuracy** | 86.38% |
+| **Detection F1** | 86.53% |
+| **Optimal Threshold** | 0.9 |
+
+### Per-Category Performance
+
+| Category | Count | Dice |
+|----------|-------|------|
+| Positive images (pneumothorax present) | 400 | 0.5643 |
+| Negative images (no pneumothorax) | 400 | 0.8525 |
 
 The evaluation suite also generates:
 - Dice score distribution histograms
@@ -100,11 +112,15 @@ The evaluation suite also generates:
 
 Training augmentations (via albumentations):
 - Horizontal flip
-- Shift/Scale/Rotate
+- Affine (shift/scale/rotate)
 - Elastic transform
 - CLAHE / Random brightness-contrast / Random gamma
 - Gaussian noise
 - ImageNet normalization
+
+## Demo
+
+Try the live demo on [HuggingFace Spaces](https://huggingface.co/spaces/srivatsav09/pneumothoraxDetection).
 
 ## References
 
