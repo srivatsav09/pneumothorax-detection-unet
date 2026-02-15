@@ -143,3 +143,11 @@ saved_models/
 # Training outputs and data
 outputs/
 data/
+
+# DICOM images and dataset files
+dicom-images-train/
+dicom-images-test/
+pneumothorax_subset_tmp/
+pneumothorax_subset.zip
+pneumothorax_subset_part_*
+train-rle.csv

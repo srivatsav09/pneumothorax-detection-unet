@@ -20,13 +20,12 @@ def get_training_transforms(image_size: int = 512, config: AugConfig = None) -> 
 
     return A.Compose([
         A.HorizontalFlip(p=config.horizontal_flip_p),
-        A.ShiftScaleRotate(
-            shift_limit=config.shift_limit,
-            scale_limit=config.scale_limit,
-            rotate_limit=config.rotate_limit,
+        A.Affine(
+            translate_percent={"x": (-config.shift_limit, config.shift_limit),
+                              "y": (-config.shift_limit, config.shift_limit)},
+            scale=(1 - config.scale_limit, 1 + config.scale_limit),
+            rotate=(-config.rotate_limit, config.rotate_limit),
             border_mode=cv2.BORDER_CONSTANT,
-            value=0,
-            mask_value=0,
             p=0.5,
         ),
         A.ElasticTransform(
@@ -44,7 +43,7 @@ def get_training_transforms(image_size: int = 512, config: AugConfig = None) -> 
             A.RandomGamma(gamma_limit=(80, 120), p=1.0),
         ], p=0.5),
         A.GaussNoise(
-            var_limit=config.gauss_noise_var_limit,
+            std_range=(0.02, 0.1),
             p=config.gauss_noise_p,
         ),
         A.Normalize(

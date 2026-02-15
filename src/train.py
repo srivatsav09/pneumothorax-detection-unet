@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import GradScaler, autocast
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from sklearn.model_selection import train_test_split
@@ -107,7 +107,7 @@ class Trainer:
         )
 
         # Mixed precision
-        self.scaler = GradScaler(enabled=config.use_amp)
+        self.scaler = GradScaler("cuda", enabled=config.use_amp)
         self.use_amp = config.use_amp
 
         # DataLoaders
@@ -151,6 +151,7 @@ class Trainer:
         self.train_metrics.reset()
         total_loss = 0.0
         num_batches = 0
+        total_batches = len(self.train_loader)
 
         self.optimizer.zero_grad()
 
@@ -158,7 +159,7 @@ class Trainer:
             images = images.to(self.device)
             masks = masks.to(self.device)
 
-            with autocast(enabled=self.use_amp):
+            with autocast("cuda", enabled=self.use_amp):
                 logits = self.model(images)
                 loss = self.criterion(logits, masks)
                 loss = loss / self.config.grad_accum_steps
@@ -176,6 +177,11 @@ class Trainer:
             with torch.no_grad():
                 self.train_metrics.update(logits.detach(), masks)
 
+            # Progress logging every 10 batches
+            if (batch_idx + 1) % 10 == 0 or (batch_idx + 1) == total_batches:
+                avg_loss = total_loss / num_batches
+                print(f"  train batch {batch_idx+1}/{total_batches} - loss: {avg_loss:.4f}", flush=True)
+
         return total_loss / max(num_batches, 1)
 
     @torch.no_grad()
@@ -186,17 +192,21 @@ class Trainer:
         total_loss = 0.0
         num_batches = 0
 
-        for images, masks in self.val_loader:
+        total_batches = len(self.val_loader)
+        for batch_idx, (images, masks) in enumerate(self.val_loader):
             images = images.to(self.device)
             masks = masks.to(self.device)
 
-            with autocast(enabled=self.use_amp):
+            with autocast("cuda", enabled=self.use_amp):
                 logits = self.model(images)
                 loss = self.criterion(logits, masks)
 
             total_loss += loss.item()
             num_batches += 1
             self.val_metrics.update(logits, masks)
+
+            if (batch_idx + 1) % 10 == 0 or (batch_idx + 1) == total_batches:
+                print(f"  val batch {batch_idx+1}/{total_batches}", flush=True)
 
         return total_loss / max(num_batches, 1)
 
