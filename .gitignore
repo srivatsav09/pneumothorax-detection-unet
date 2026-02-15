@@ -150,4 +150,3 @@ dicom-images-test/
 pneumothorax_subset_tmp/
 pneumothorax_subset.zip
 pneumothorax_subset_part_*
-train-rle.csv
