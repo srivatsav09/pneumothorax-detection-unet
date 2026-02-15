@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from torch.utils.data import DataLoader
-from torch.cuda.amp import autocast
+from torch.amp import autocast
 from typing import Dict, Optional
 
 from src.metrics import MetricsCalculator
@@ -104,7 +104,7 @@ class Evaluator:
             for images, masks in self.loader:
                 images = images.to(self.device)
                 masks = masks.to(self.device)
-                with autocast(enabled=self.device != "cpu"):
+                with autocast("cuda", enabled=self.device != "cpu"):
                     logits = self.model(images)
                 metrics_calc.update(logits, masks)
 
@@ -119,7 +119,7 @@ class Evaluator:
             for images, masks in self.loader:
                 images = images.to(self.device)
                 masks = masks.to(self.device)
-                with autocast(enabled=self.device != "cpu"):
+                with autocast("cuda", enabled=self.device != "cpu"):
                     logits = self.model(images)
                 probs = torch.sigmoid(logits)
                 preds = (probs > self.threshold).float()
@@ -228,7 +228,7 @@ class Evaluator:
             for col, (dice_val, idx) in enumerate(selected):
                 img_tensor, mask_tensor = self.dataset[idx]
                 img_input = img_tensor.unsqueeze(0).to(self.device)
-                with autocast(enabled=self.device != "cpu"):
+                with autocast("cuda", enabled=self.device != "cpu"):
                     logit = self.model(img_input)
                 pred = (torch.sigmoid(logit) > self.threshold).float()
 
