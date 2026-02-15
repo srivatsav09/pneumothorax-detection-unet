@@ -35,7 +35,7 @@ class TrainConfig:
     pos_weight: float = 10.0
     grad_accum_steps: int = 1
     use_amp: bool = True
-    early_stopping_patience: int = 10
+    early_stopping_patience: int = 15
     checkpoint_dir: str = "outputs/checkpoints"
     log_dir: str = "outputs/logs"
     seed: int = 42

@@ -53,16 +53,25 @@ class MetricsCalculator:
             pred_i = preds[i].cpu().numpy().flatten()
             target_i = targets[i].cpu().numpy().flatten()
 
-            # Dice
+            # Dice - handle true negatives (both empty) as perfect score
+            gt_empty = target_i.sum() == 0
+            pred_empty = pred_i.sum() == 0
             intersection = (pred_i * target_i).sum()
-            dice = (2.0 * intersection + self.smooth) / (
-                pred_i.sum() + target_i.sum() + self.smooth
-            )
-            self.dice_scores.append(float(dice))
 
-            # IoU
-            union = pred_i.sum() + target_i.sum() - intersection
-            iou = (intersection + self.smooth) / (union + self.smooth)
+            if gt_empty and pred_empty:
+                dice = 1.0  # Both empty = perfect
+                iou = 1.0
+            elif gt_empty or pred_empty:
+                dice = 0.0  # One empty, one not = no overlap
+                iou = 0.0
+            else:
+                dice = (2.0 * intersection + self.smooth) / (
+                    pred_i.sum() + target_i.sum() + self.smooth
+                )
+                union = pred_i.sum() + target_i.sum() - intersection
+                iou = (intersection + self.smooth) / (union + self.smooth)
+
+            self.dice_scores.append(float(dice))
             self.iou_scores.append(float(iou))
 
             # Pixel-level confusion matrix
